@@ -46,7 +46,7 @@ public class FirePicView extends ViewGroup {
 
     public FirePicView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setWillNotDraw(false);
+      //  setWillNotDraw(false);
         first  = new ImageView(getContext());
         first.setBackgroundColor(Color.RED);
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(300, 400);
@@ -99,19 +99,13 @@ public class FirePicView extends ViewGroup {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                background.setFocusable(false);
                 ViewHelper.setTranslationX(background, lastTranslationX + e2.getRawX() - e1.getRawX());
                 ViewHelper.setTranslationY(background, lastTranslationY + e2.getRawY() - e1.getRawY());
 
+                FirePicView.this.setDrawingCacheEnabled(false);
                 FirePicView.this.setDrawingCacheEnabled(true);
                 Bitmap drawBitmap = FirePicView.this.getDrawingCache();
                 displayView.setImageBitmap(drawBitmap);
-                displayView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        FirePicView.this.setDrawingCacheEnabled(false);
-                    }
-                });
                 return true;
             }
 
@@ -132,13 +126,6 @@ public class FirePicView extends ViewGroup {
                 return gestureDetector.onTouchEvent(event);
             }
         });
-
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-
-            }
-        }, 100);
     }
 
     @Override
