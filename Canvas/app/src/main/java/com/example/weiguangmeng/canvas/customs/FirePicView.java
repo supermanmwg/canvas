@@ -1,23 +1,44 @@
 package com.example.weiguangmeng.canvas.customs;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.net.Uri;
+import android.os.Handler;
 import android.util.AttributeSet;
-import android.view.Gravity;
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+
+import com.example.weiguangmeng.canvas.R;
+import com.facebook.common.util.UriUtil;
+import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.drawee.drawable.ProgressBarDrawable;
+import com.facebook.drawee.drawable.ScalingUtils;
+import com.facebook.drawee.generic.GenericDraweeHierarchy;
+import com.facebook.drawee.generic.GenericDraweeHierarchyBuilder;
+import com.facebook.drawee.interfaces.DraweeController;
+import com.facebook.drawee.view.SimpleDraweeView;
+import com.nineoldandroids.view.ViewHelper;
 
 /**
  * Created by weiguangmeng on 16/1/3.
  */
 public class FirePicView extends ViewGroup {
-    private ImageView background;
+    private ImageView first;
+    private SimpleDraweeView background;
     private ImageView foreground;
-    private int fTop;
-    private int fLeft;
-    private int bTop;
-    private int bLeft;
+    private ImageView displayView;
+
+    private float lastTranslationX;
+    private float lastTranslationY;
 
     public FirePicView(Context context) {
         this(context, null);
@@ -25,10 +46,31 @@ public class FirePicView extends ViewGroup {
 
     public FirePicView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        background = new ImageView(getContext());
+        setWillNotDraw(false);
+        first  = new ImageView(getContext());
+        first.setBackgroundColor(Color.RED);
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(300, 400);
+        alp.setMargins(0, 0, 0, 0);
+        addView(first, alp);
+
+        Uri data = new Uri.Builder()
+                .scheme(UriUtil.LOCAL_RESOURCE_SCHEME)
+                .path(String.valueOf(R.drawable.bbb_splash))
+                .build();
+
+        DraweeController ctrl = Fresco.newDraweeControllerBuilder().setUri(
+                data).setTapToRetryEnabled(true).build();
+
+        GenericDraweeHierarchy hierarchy = new GenericDraweeHierarchyBuilder(getResources())
+                .setActualImageScaleType(ScalingUtils.ScaleType.FIT_CENTER)
+                .setProgressBarImage(new ProgressBarDrawable())
+                .build();
+
+        background = new SimpleDraweeView(getContext());
+        background.setController(ctrl);
         background.setBackgroundColor(Color.BLACK);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(300, 400);
-        blp.setMargins(40, 40, 40, 40);
+        blp.setMargins(400, 400, 400, 400);
         addView(background, blp);
 
         foreground = new ImageView(getContext());
@@ -37,6 +79,66 @@ public class FirePicView extends ViewGroup {
         flp.setMargins(40, 40, 40, 40);
         addView(foreground, flp);
 
+        final GestureDetector gestureDetector = new GestureDetector(getContext(), new GestureDetector.OnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                lastTranslationX = ViewHelper.getTranslationX(background);
+                lastTranslationY = ViewHelper.getTranslationY(background);
+                return true;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                background.setFocusable(false);
+                ViewHelper.setTranslationX(background, lastTranslationX + e2.getRawX() - e1.getRawX());
+                ViewHelper.setTranslationY(background, lastTranslationY + e2.getRawY() - e1.getRawY());
+
+                FirePicView.this.setDrawingCacheEnabled(true);
+                Bitmap drawBitmap = FirePicView.this.getDrawingCache();
+                displayView.setImageBitmap(drawBitmap);
+                displayView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        FirePicView.this.setDrawingCacheEnabled(false);
+                    }
+                });
+                return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
+            }
+        });
+
+        background.setOnTouchListener(new OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return gestureDetector.onTouchEvent(event);
+            }
+        });
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        }, 100);
     }
 
     @Override
@@ -57,11 +159,18 @@ public class FirePicView extends ViewGroup {
         int paddingLeft = getPaddingLeft();
         int paddingTop = getPaddingTop();
 
+        if(first != null) {
+            MarginLayoutParams lp = (MarginLayoutParams) first.getLayoutParams();
+            int marginLeft = paddingLeft + lp.leftMargin;
+            int marginTop = paddingTop + lp.topMargin;
+            first.layout(marginLeft, marginTop, marginLeft + this.getMeasuredWidth(), marginTop + this.getMeasuredHeight());
+        }
+
         if(foreground != null) {
             MarginLayoutParams lp = (MarginLayoutParams) foreground.getLayoutParams();
             int marginLeft = paddingLeft + lp.leftMargin;
             int marginTop = paddingTop + lp.topMargin;
-            foreground.layout(marginLeft, marginTop,  marginLeft + foreground.getMeasuredWidth(), marginTop + foreground.getMeasuredHeight());
+            foreground.layout(marginLeft, marginTop, marginLeft + foreground.getMeasuredWidth(), marginTop + foreground.getMeasuredHeight());
         }
 
         if(background != null) {
@@ -73,7 +182,18 @@ public class FirePicView extends ViewGroup {
                     this.getMeasuredHeight() - background.getMeasuredHeight() - marginTop,
                     this.getMeasuredWidth() - marginTop,
                     this.getMeasuredHeight() - marginTop);
+            Log.d("haha", "on layout");
         }
-
     }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        Log.d("haha", "on Draw");
+    }
+
+    public void setDisplayView(ImageView view) {
+        this.displayView = view;
+    }
+
 }
